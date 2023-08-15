@@ -1,0 +1,80 @@
+integer channel = 1000;
+integer indice = 0;
+
+list pairs = [];
+list lista = ["aires","airane","raquel","aira","ari","watasena","radames","yan","vera","bia","clovis","daniel","buster","xuxo"];
+
+list next12 ( list itens , integer index)
+{
+ 
+    integer i;
+    integer indice2;
+    list tempkey;
+    list listaaux = [];
+    integer pointer;
+    
+    pointer = index;
+    
+    llOwnerSay((string)(llGetListLength(itens)-index));
+    for ( i=index;i<=(index+11) && i<=llGetListLength(itens);i++)
+    {
+
+        if ( ((i-index) == 2))
+        {
+            if ( (llGetListLength(itens)-index)>=10)
+            {
+                listaaux += (list)"proximo";            
+                i++;
+            };        
+        };
+                
+        if ( index != 0 )
+        {
+            
+            if ( (i - index) == 0 )
+            {
+            
+                listaaux += (list)"anterior";            
+                i++;            
+            
+            };
+        };
+        
+        listaaux += (list)llList2String(itens,pointer); 
+        pointer++;
+
+    }
+    
+    return listaaux;
+    
+}
+
+default
+{
+    state_entry()
+    {
+        llListen(channel,"", "","");
+        llOwnerSay("rodou");
+    }
+ 
+    touch_start(integer count)
+    {
+        llDialog(llDetectedKey(0), "This is a test dialog.\n\nPlease choose one of the below options.",next12(lista,0), channel);
+        //llOwnerSay(llDumpList2String(next12(lista,0),","));
+        //llOwnerSay(llList2String(lista,0));
+    }
+ 
+    listen(integer chan, string name, key id, string mes)
+    {
+        if (mes == "proximo")
+        {
+            indice = indice + 11;
+            llDialog(id, "This is a test dialog.\n\nPlease choose one of the below options.",next12(lista,indice), channel);
+        }
+        else if (mes == "anterior")
+        {
+            indice = indice - 11;
+            llDialog(id, "This is a test dialog.\n\nPlease choose one of the below options.",next12(lista,indice), channel);
+        };
+    }
+}
