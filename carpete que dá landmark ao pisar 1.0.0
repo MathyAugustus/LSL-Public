@@ -1,0 +1,41 @@
+string gStringLDName;
+
+default
+{
+    
+    state_entry()
+    {
+                
+            llOwnerSay("Landmark detectada : " + llGetInventoryName(INVENTORY_LANDMARK, 0));
+            gStringLDName = llGetInventoryName(INVENTORY_LANDMARK, 0);
+            
+        
+    }
+    
+    collision_start(integer pIntegerIDX)
+    {
+        
+        integer pIntegerScan;
+        for( pIntegerScan = 0 ; pIntegerScan < pIntegerIDX ; pIntegerScan++)
+        {
+         
+             llGiveInventory( llDetectedKey(pIntegerScan), gStringLDName );   
+             llOwnerSay("Dando landmark para : " + llDetectedName(pIntegerScan) );
+            
+        }
+        
+    }
+    
+    changed(integer change)
+    {
+    
+        if (change & CHANGED_INVENTORY)         
+        {
+            
+            llResetScript();
+            
+        }
+        
+    }     
+    
+}
