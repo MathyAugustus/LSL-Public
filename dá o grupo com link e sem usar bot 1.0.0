@@ -1,0 +1,21 @@
+string group_id = "";
+string message = "Click here to join:";
+
+default
+{
+    
+    touch_start(integer total_number)
+    { 
+    
+        integer pIntegerI;
+        
+        for ( pIntegerI=0 ; pIntegerI < total_number ; pIntegerI++ )
+        {
+            
+            llInstantMessage(llDetectedKey(0), message + " secondlife:///app/group/" + group_id + "/about");
+            
+        }
+            
+    } 
+            
+} 
