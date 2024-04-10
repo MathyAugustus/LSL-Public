@@ -1,0 +1,136 @@
+Especificação de Nomenclatura de Variáveis
+
+Neste texto, abordaremos uma especificação de nomenclatura de variáveis para LSL (Linden Script Language), utilizada para anexar comportamento a objetos.
+
+Para começar, precisamos falar sobre os tipos de variáveis, que são: integer, float, string, key, list, vector e rotation.
+
+Esses tipos são utilizados na atribuição de valores no LSL. Para evitar erros de "type mismatch" (tipo incompatível), seria interessante incluir o tipo no nome da variável. Outra prática recomendável na nomenclatura de variáveis é o uso do "camel case", onde a primeira letra do nome é minúscula, mas os demais nomes contidos na variável iniciam com letra maiúscula. Vamos exemplificar com um código "hello avatar" que, ao ser tocado, diz o nome de quem o tocou:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key chave = llDetectedKey(0);
+		llSay(0, "Fui tocado por " + llKey2Name(chave));
+		// Na linha acima, poderia ter usado llDetectedName(0), mas, por questões didáticas, usei o llDetectedKey(0).
+	}
+}
+
+Este código, considerando que o tipo pertence ao nome, seria:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "Fui tocado por " + llKey2Name(keyChave));
+		// Na linha acima, poderia ter usado llDetectedName(0), mas, por questões didáticas, usei o llDetectedKey(0).
+	}
+}
+
+Outro ponto importante é o escopo, que pode ser global ou privado. As variáveis globais são declaradas no topo do código, enquanto as privadas são visíveis apenas pelo bloco de código em que foram declaradas. Para efeitos de organização, as variáveis globais começam com a letra minúscula "g" e as privadas, com "p". Vejamos como ficaria nosso exemplo:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "Fui tocado por " + llKey2Name(pKeyChave));
+		// Observe que, para efeitos de escopo, pKeyChave existe somente durante a execução do bloco do evento touch_start. Após o término do bloco, ela deixa de existir. Caso seja necessário usar o valor em outros blocos, pKeyChave deveria ser declarada no topo, e seu valor consome memória enquanto o script estiver rodando.
+	}
+}
+
+Ainda existe um outro caso para variáveis privadas, que seriam blocos dentro de blocos. Nesses casos, usamos "pp", conforme o exemplo a seguir:
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "Fui tocado por " + llKey2Name(gKeyChave) + " e ele tem ID = " + (string)ppIntegerForID);
+			// Se ppIntegerForID for usado fora do bloco, ocorrerá um erro, pois ele não existe mais nesta parte do código.
+		}
+	}
+}
+
+A última consideração sobre a nomenclatura de variáveis se refere a parâmetros passados para dentro do código por disparo de eventos. Essas variáveis recebem a letra "e" ao serem declaradas em eventos.
+
+key gKeyChave;	
+
+default
+{
+
+	state_entry()
+	{
+	
+		llSay(0,"Hello, avatar!");
+	
+	}
+	
+	touch_start(integer eIntegerTotal)
+	{
+	
+	
+		llSay(0,"Touched1");
+		
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for( pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+		
+			integer ppIntegerForID = pIntegerID;
+			llSay(0,"Fui tocado por " + llKey2Name(gKeyChave) + " e ele tem ID = " + (string)ppIntegerForID);
+		
+		}
+		
+		//Variáveis "e" somente existem durante a execução do evento
+	}
+
+}
+
+Essas são as regras que uso na especificação de nomenclatura de variáveis. Claro, existem outras considerações que não cabem aqui, como, ao declarar o tipo, usar na nomenclatura apenas 3 letras (ex.: eIntTotal). Recomenda-se sempre nomear as variáveis em inglês... é mais estiloso! 😄
+
+Este é um resumo do resumo de minha especificação de nomenclatura de variáveis. Conforme for atualizada com mais informações, será publicada.
+
+Abraço,
+Augustus
