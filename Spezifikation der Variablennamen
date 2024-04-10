@@ -1,0 +1,129 @@
+Spezifikation der Variablennamen
+
+In diesem Text werden wir eine Spezifikation der Variablennamen für LSL (Linden Script Language) behandeln, die verwendet wird, um Verhalten an Objekte anzuhängen.
+
+Zunächst müssen wir über die Typen von Variablen sprechen, die sind: integer, float, string, key, list, vector und rotation.
+
+Diese Typen werden in LSL zur Wertzuweisung verwendet. Um Fehler durch "type mismatch" (Typeninkonsistenz) zu vermeiden, wäre es sinnvoll, den Typ im Namen der Variablen einzuschließen. Eine weitere empfehlenswerte Praxis bei der Benennung von Variablen ist die Verwendung von "Camel Case", bei der der erste Buchstabe des Namens klein ist, aber die nachfolgenden Namen, die in der Variablen enthalten sind, mit einem Großbuchstaben beginnen. Wir veranschaulichen dies mit einem "hello avatar" Code, der, wenn er berührt wird, den Namen der Person aussagt, die ihn berührt hat:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hallo, Avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Berührt!");
+		key chave = llDetectedKey(0);
+		llSay(0, "Ich wurde von " + llKey2Name(chave) + " berührt");
+		// In der obigen Zeile hätte ich llDetectedName(0) verwenden können, aber aus didaktischen Gründen habe ich llDetectedKey(0) verwendet.
+	}
+}
+
+Dieser Code, unter der Annahme, dass der Typ zum Namen gehört, wäre:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hallo, Avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Berührt!");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "Ich wurde von " + llKey2Name(keyChave) + " berührt");
+		// In der obigen Zeile hätte ich llDetectedName(0) verwenden können, aber aus didaktischen Gründen habe ich llDetectedKey(0) verwendet.
+	}
+}
+
+Ein weiterer wichtiger Punkt ist der Geltungsbereich, der global oder privat sein kann. Globale Variablen werden am Anfang des Codes deklariert, während private Variablen nur innerhalb des Codeblocks sichtbar sind, in dem sie deklariert wurden. Zu Organisationszwecken beginnen globale Variablen mit dem Kleinbuchstaben "g" und private mit "p". Sehen wir, wie unser Beispiel aussehen würde:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hallo, Avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Berührt!");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "Ich wurde von " + llKey2Name(pKeyChave) + " berührt");
+		// Beachten Sie, dass pKeyChave nur während der Ausführung des touch_start-Ereignisblocks existiert. Nach dem Ende des Blocks existiert sie nicht mehr. Wenn es notwendig ist, den Wert in anderen Blöcken zu verwenden, sollte pKeyChave am Anfang deklariert werden, und ihr Wert verbraucht Speicher, solange das Skript läuft.
+	}
+}
+
+Es gibt auch einen weiteren Fall für private Variablen, die Blöcke innerhalb von Blöcken sind. In diesen Fällen verwenden wir "pp", wie im folgenden Beispiel:
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hallo, Avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Berührt!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "Ich wurde von " + llKey2Name(gKeyChave) + " berührt und er hat die ID = " + (string)ppIntegerForID);
+			// Wenn ppIntegerForID außerhalb des Blocks verwendet wird, tritt ein Fehler auf, da es in diesem Teil des Codes nicht mehr existiert.
+		}
+	}
+}
+
+Die letzte Überlegung bezüglich der Benennung von Variablen bezieht sich auf Parameter, die durch Ereignisauslösungen in den Code übergeben werden. Diese Variablen erhalten den Buchstaben "e", wenn sie in Ereignissen deklariert werden.
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hallo, Avatar!");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "Berührt!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "Ich wurde von " + llKey2Name(gKeyChave) + " berührt und er hat die ID = " + (string)ppIntegerForID);
+		}
+		
+		// "e" Variablen existieren nur während der Ausführung des Ereignisses.
+	}
+}
+
+Dies sind die Regeln, die ich bei der Spezifikation von Variablennamen verwende. Natürlich gibt es andere Überlegungen, die hier nicht enthalten sind, wie die Verwendung von nur 3 Buchstaben beim Deklarieren des Typs (z.B. eIntTotal). Es wird immer empfohlen, Variablen auf Englisch zu benennen... es ist stilvoller! 😄
+
+Dies ist eine Zusammenfassung meiner Spezifikation für Variablennamen. Sobald sie mit weiteren Informationen aktualisiert wird, wird sie veröffentlicht.
+
+Mit freundlichen Grüßen,
+Augustus
