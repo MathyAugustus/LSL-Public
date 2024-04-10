@@ -1,0 +1,129 @@
+Specifica della Nomenclatura delle Variabili
+
+In questo testo, affronteremo una specifica della nomenclatura delle variabili per LSL (Linden Script Language), utilizzata per allegare comportamenti agli oggetti.
+
+Per iniziare, dobbiamo parlare dei tipi di variabili, che sono: integer, float, string, key, list, vector e rotation.
+
+Questi tipi sono utilizzati nell'assegnazione dei valori in LSL. Per evitare errori di "type mismatch" (mancata corrispondenza dei tipi), sarebbe interessante includere il tipo nel nome della variabile. Un'altra pratica raccomandata nella nomenclatura delle variabili è l'uso del "camel case", dove la prima lettera del nome è minuscola, ma i nomi successivi contenuti nella variabile iniziano con una lettera maiuscola. Facciamo un esempio con un codice "hello avatar" che, quando toccato, dice il nome della persona che lo ha toccato:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Ciao, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Toccato!");
+		key chave = llDetectedKey(0);
+		llSay(0, "Sono stato toccato da " + llKey2Name(chave));
+		// Nella riga sopra, avrei potuto usare llDetectedName(0), ma per ragioni didattiche, ho usato llDetectedKey(0).
+	}
+}
+
+Questo codice, considerando che il tipo appartiene al nome, sarebbe:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Ciao, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Toccato!");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "Sono stato toccato da " + llKey2Name(keyChave));
+		// Nella riga sopra, avrei potuto usare llDetectedName(0), ma per ragioni didattiche, ho usato llDetectedKey(0).
+	}
+}
+
+Un altro punto importante è l'ambito, che può essere globale o privato. Le variabili globali sono dichiarate nella parte superiore del codice, mentre quelle private sono visibili solo dal blocco di codice in cui sono state dichiarate. A fini organizzativi, le variabili globali iniziano con la lettera minuscola "g" e quelle private con "p". Vediamo come sarebbe il nostro esempio:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Ciao, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Toccato!");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "Sono stato toccato da " + llKey2Name(pKeyChave));
+		// Nota che, per effetti di ambito, pKeyChave esiste solo durante l'esecuzione del blocco dell'evento touch_start. Dopo la fine del blocco, essa cessa di esistere. Se fosse necessario utilizzare il valore in altri blocchi, pKeyChave dovrebbe essere dichiarata nella parte superiore, e il suo valore consuma memoria mentre lo script è in esecuzione.
+	}
+}
+
+Esiste anche un altro caso per le variabili private, che sarebbero blocchi dentro blocchi. In questi casi, usiamo "pp", come nell'esempio seguente:
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Ciao, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Toccato!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "Sono stato toccato da " + llKey2Name(gKeyChave) + " e ha ID = " + (string)ppIntegerForID);
+			// Se ppIntegerForID viene usato fuori dal blocco, si verificherà un errore, poiché non esiste più in questa parte del codice.
+		}
+	}
+}
+
+L'ultima considerazione riguardante la nomenclatura delle variabili si riferisce ai parametri passati al codice tramite trigger di eventi. Queste variabili ricevono la lettera "e" quando vengono dichiarate negli eventi.
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Ciao, avatar!");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "Toccato!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "Sono stato toccato da " + llKey2Name(gKeyChave) + " e ha ID = " + (string)ppIntegerForID);
+		}
+		
+		// Le variabili "e" esistono solo durante l'esecuzione dell'evento.
+	}
+}
+
+Queste sono le regole che uso nella specifica della nomenclatura delle variabili. Ovviamente, ci sono altre considerazioni che non rientrano qui, come usare solo 3 lettere quando si dichiara il tipo (es.: eIntTotal). Si raccomanda sempre di nominare le variabili in inglese... è più stiloso! 😄
+
+Questo è un riassunto del mio documento di specifica della nomenclatura delle variabili. Man mano che verrà aggiornato con più informazioni, verrà pubblicato.
+
+Un saluto,
+Augustus
