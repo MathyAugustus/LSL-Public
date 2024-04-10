@@ -1,0 +1,129 @@
+In this 
+
+text, we will address a variable naming specification for LSL (Linden Script Language), used to attach behavior to objects.
+
+First, we need to talk about the types of variables, which are: integer, float, string, key, list, vector, and rotation.
+
+These types are used in assigning values in LSL. To avoid "type mismatch" errors, it would be interesting to include the type in the variable name. Another recommended practice in variable naming is the use of "camel case", where the first letter of the name is lowercase, but the subsequent names contained in the variable start with an uppercase letter. Let's exemplify with a "hello avatar" code that, when touched, says the name of the person who touched it:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key chave = llDetectedKey(0);
+		llSay(0, "I was touched by " + llKey2Name(chave));
+		// In the line above, I could have used llDetectedName(0), but for didactic reasons, I used llDetectedKey(0).
+	}
+}
+
+This code, considering that the type belongs to the name, would be:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "I was touched by " + llKey2Name(keyChave));
+		// In the line above, I could have used llDetectedName(0), but for didactic reasons, I used llDetectedKey(0).
+	}
+}
+
+Another important point is the scope, which can be global or private. Global variables are declared at the top of the code, while private ones are visible only by the code block in which they were declared. For organizational purposes, global variables start with the lowercase letter "g" and private ones with "p". Let's see how our example would look:
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "I was touched by " + llKey2Name(pKeyChave));
+		// Note that, for scope effects, pKeyChave exists only during the execution of the touch_start event block. After the block ends, it ceases to exist. If it is necessary to use the value in other blocks, pKeyChave should be declared at the top, and its value consumes memory while the script is running.
+	}
+}
+
+There is also another case for private variables, which would be blocks within blocks. In these cases, we use "pp", as in the following example:
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touched!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "I was touched by " + llKey2Name(gKeyChave) + " and he has ID = " + (string)ppIntegerForID);
+			// If ppIntegerForID is used outside the block, an error will occur, as it no longer exists in this part of the code.
+		}
+	}
+}
+
+The last consideration regarding variable naming refers to parameters passed into the code by event triggers. These variables receive the letter "e" when declared in events.
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Hello, avatar!");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "Touched!");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "I was touched by " + llKey2Name(gKeyChave) + " and he has ID = " + (string)ppIntegerForID);
+		}
+		
+		// "e" variables only exist during the event execution.
+	}
+}
+
+These are the rules I use in the variable naming specification. Of course, there are other considerations that do not fit here, such as using only 3 letters when declaring the type (e.g., eIntTotal). It is always recommended to name variables in English... it's more stylish! 😄
+
+This is a summary of my variable naming specification. As it is updated with more information, it will be published.
+
+Best,
+Augustus
