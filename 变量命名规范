@@ -1,0 +1,129 @@
+变量命名规范
+
+在这篇文本中，我们将讨论用于将行为附加到对象上的LSL（Linden Script Language）的变量命名规范。
+
+首先，我们需要讨论的是变量类型，包括：integer（整型），float（浮点型），string（字符串），key（键），list（列表），vector（向量）和rotation（旋转）。
+
+这些类型在LSL中用于赋值。为了避免“type mismatch”（类型不匹配）的错误，将类型包含在变量名中会是一个好主意。变量命名的另一个推荐做法是使用“驼峰式大小写”，其中名称的第一个字母是小写的，但变量中包含的其他名称的第一个字母是大写的。我们用一个“hello avatar”代码示例来说明，当它被触摸时，它会说出触摸它的人的名字：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "你好，头像！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "被触摸了！");
+		key chave = llDetectedKey(0);
+		llSay(0, "我被 " + llKey2Name(chave) + " 触摸了");
+		// 在上面的行中，我本可以使用llDetectedName(0)，但出于教学原因，我使用了llDetectedKey(0)。
+	}
+}
+
+考虑到类型属于名称，这段代码将是：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "你好，头像！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "被触摸了！");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "我被 " + llKey2Name(keyChave) + " 触摸了");
+		// 在上面的行中，我本可以使用llDetectedName(0)，但出于教学原因，我使用了llDetectedKey(0)。
+	}
+}
+
+另一个重要的点是作用域，可以是全局的或私有的。全局变量在代码的顶部声明，而私有变量只在它们被声明的代码块中可见。为了组织目的，全局变量以小写的"g"开头，私有变量以"p"开头。让我们看看我们的示例将如何呈现：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "你好，头像！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "被触摸了！");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "我被 " + llKey2Name(pKeyChave) + " 触摸了");
+		// 请注意，出于作用域的效果，pKeyChave只在touch_start事件块的执行期间存在。块结束后，它就不再存在。如果需要在其他块中使用值，pKeyChave应该在顶部声明，并且其值在脚本运行时消耗内存。
+	}
+}
+
+还有另一个案例适用于私有变量，即块中的块。在这些情况下，我们使用"pp"，如下例所示：
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "你好，头像！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "被触摸了！");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "我被 " + llKey2Name(gKeyChave) + " 触摸了，他的ID = " + (string)ppIntegerForID);
+			// 如果ppIntegerForID在块外使用，将导致错误，因为它在代码的这一部分不再存在。
+		}
+	}
+}
+
+关于变量命名的最后一点考虑是，通过事件触发传递到代码中的参数。这些变量在事件中声明时会收到字母"e"。
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "你好，头像！");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "被触摸了！");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "我被 " + llKey2Name(gKeyChave) + " 触摸了，他的ID = " + (string)ppIntegerForID);
+		}
+		
+		// “e”变量仅在事件执行期间存在。
+	}
+}
+
+这些是我在变量命名规范中使用的规则。当然，还有一些其他的考虑因素没有包括在内，例如，在声明类型时仅使用3个字母（例如：eIntTotal）。始终建议使用英语来命名变量...这更有风格！😄
+
+这是我的变量命名规范的概要。随着更多信息的更新，它将被发布。
+
+此致，
+Augustus
