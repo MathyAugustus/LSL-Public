@@ -1,0 +1,129 @@
+変数名の仕様
+
+このテキストでは、オブジェクトに動作を割り当てるために使用されるLSL（Linden Script Language）の変数名の仕様について説明します。
+
+まず、変数のタイプについて話す必要があります。それらは、integer、float、string、key、list、vector、rotationです。
+
+これらのタイプはLSLで値の割り当てに使用されます。"type mismatch"（タイプ不一致）のエラーを避けるために、変数名にタイプを含めると良いでしょう。変数の命名において推奨される別の方法として、"キャメルケース"の使用があります。これは、名前の最初の文字は小文字ですが、変数に含まれる後続の名前は大文字で始まります。"hello avatar"というコードで例を示します。これは、触れられたときに、それを触った人の名前を言うものです：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "こんにちは、アバター！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "触れられました！");
+		key chave = llDetectedKey(0);
+		llSay(0, llKey2Name(chave) + "に触れられました");
+		// 上記の行では、llDetectedName(0)を使用することもできましたが、教育上の理由からllDetectedKey(0)を使用しました。
+	}
+}
+
+このコードで、タイプが名前に属すると考えると、以下のようになります：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "こんにちは、アバター！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "触れられました！");
+		key keyChave = llDetectedKey(0);
+		llSay(0, llKey2Name(keyChave) + "に触れられました");
+		// 上記の行では、llDetectedName(0)を使用することもできましたが、教育上の理由からllDetectedKey(0)を使用しました。
+	}
+}
+
+もう一つ重要なポイントはスコープで、グローバルまたはプライベートにすることができます。グローバル変数はコードの最上部に宣言され、プライベート変数は宣言されたコードブロック内でのみ表示されます。組織上の目的のために、グローバル変数は小文字の"g"で始まり、プライベート変数は"p"で始まります。私たちの例でどのようになるか見てみましょう：
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "こんにちは、アバター！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "触れられました！");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, llKey2Name(pKeyChave) + "に触れられました");
+		// スコープの効果として、pKeyChaveはtouch_startイベントブロックの実行中にのみ存在します。ブロックの終了後、それは存在しなくなります。他のブロックで値を使用する必要がある場合、pKeyChaveは最上部で宣言され、スクリプトが実行されている間、その値がメモリを消費します。
+	}
+}
+
+プライベート変数には、ブロック内のブロックという別のケースも存在します。これらのケースでは、"pp"を使用します。以下に例を示します：
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "こんにちは、アバター！");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "触れられました！");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, llKey2Name(gKeyChave) + "に触れられ、ID = " + (string)ppIntegerForID + "です");
+			// ppIntegerForIDをブロックの外で使用すると、エラーが発生します。このコードの部分ではもう存在しません。
+		}
+	}
+}
+
+変数の命名に関する最後の考慮事項は、イベントのトリガーによってコードに渡されるパラメータに関するものです。これらの変数は、イベントで宣言されるときに"e"の文字を受け取ります。
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "こんにちは、アバター！");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "触れられました！");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, llKey2Name(gKeyChave) + "に触れられ、ID = " + (string)ppIntegerForID + "です");
+		}
+		
+		// "e"変数は、イベントの実行中にのみ存在します。
+	}
+}
+
+これらは私が変数の命名仕様に使用するルールです。もちろん、ここに含まれていない他の考慮事項もあります。たとえば、タイプを宣言するときには3文字だけを使用する（例：eIntTotal）などです。変数に名前を付けるときは常に英語を使用することをお勧めします...それがもっとスタイリッシュです！😄
+
+これは私の変数命名仕様の要約です。より多くの情報で更新されると、公開されます。
+
+敬具、
+Augustus
