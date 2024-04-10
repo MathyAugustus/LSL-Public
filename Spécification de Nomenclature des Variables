@@ -1,0 +1,129 @@
+Spécification de Nomenclature des Variables
+
+Dans ce texte, nous aborderons une spécification de nomenclature des variables pour LSL (Linden Script Language), utilisée pour attacher des comportements aux objets.
+
+Pour commencer, nous devons parler des types de variables, qui sont : integer, float, string, key, list, vector et rotation.
+
+Ces types sont utilisés dans l'attribution des valeurs en LSL. Pour éviter les erreurs de "type mismatch" (incompatibilité de type), il serait intéressant d'inclure le type dans le nom de la variable. Une autre pratique recommandée dans la nomenclature des variables est l'utilisation du "camel case", où la première lettre du nom est en minuscule, mais les noms suivants contenus dans la variable commencent par une majuscule. Illustrons avec un code "hello avatar" qui, lorsqu'il est touché, dit le nom de la personne qui l'a touché :
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Bonjour, avatar !");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touché !");
+		key chave = llDetectedKey(0);
+		llSay(0, "J'ai été touché par " + llKey2Name(chave));
+		// Dans la ligne ci-dessus, j'aurais pu utiliser llDetectedName(0), mais pour des raisons didactiques, j'ai utilisé llDetectedKey(0).
+	}
+}
+
+Ce code, considérant que le type appartient au nom, serait :
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Bonjour, avatar !");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touché !");
+		key keyChave = llDetectedKey(0);
+		llSay(0, "J'ai été touché par " + llKey2Name(keyChave));
+		// Dans la ligne ci-dessus, j'aurais pu utiliser llDetectedName(0), mais pour des raisons didactiques, j'ai utilisé llDetectedKey(0).
+	}
+}
+
+Un autre point important est la portée, qui peut être globale ou privée. Les variables globales sont déclarées en haut du code, tandis que les privées sont visibles uniquement par le bloc de code dans lequel elles ont été déclarées. Pour des raisons d'organisation, les variables globales commencent par la lettre minuscule "g" et les privées par "p". Voyons à quoi ressemblerait notre exemple :
+
+lsl
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Bonjour, avatar !");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touché !");
+		key pKeyChave = llDetectedKey(0);
+		llSay(0, "J'ai été touché par " + llKey2Name(pKeyChave));
+		// Notez que, pour des effets de portée, pKeyChave existe uniquement pendant l'exécution du bloc d'événement touch_start. Après la fin du bloc, elle cesse d'exister. Si il est nécessaire d'utiliser la valeur dans d'autres blocs, pKeyChave devrait être déclarée en haut, et sa valeur consomme de la mémoire tant que le script est en cours d'exécution.
+	}
+}
+
+Il existe également un autre cas pour les variables privées, qui seraient des blocs dans des blocs. Dans ces cas, nous utilisons "pp", comme dans l'exemple suivant :
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Bonjour, avatar !");
+	}
+
+	touch_start(integer total_num)
+	{
+		llSay(0, "Touché !");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < total_num; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "J'ai été touché par " + llKey2Name(gKeyChave) + " et il a l'ID = " + (string)ppIntegerForID);
+			// Si ppIntegerForID est utilisé en dehors du bloc, une erreur se produira, car il n'existe plus dans cette partie du code.
+		}
+	}
+}
+
+La dernière considération concernant la nomenclature des variables se réfère aux paramètres passés dans le code par déclenchement d'événements. Ces variables reçoivent la lettre "e" lorsqu'elles sont déclarées dans des événements.
+
+lsl
+
+key gKeyChave;	
+
+default
+{
+	state_entry()
+	{
+		llSay(0, "Bonjour, avatar !");
+	}
+
+	touch_start(integer eIntegerTotal)
+	{
+		llSay(0, "Touché !");
+		gKeyChave = llDetectedKey(0);
+		
+		integer pIntegerID;
+		for(pIntegerID = 0; pIntegerID < eIntegerTotal; pIntegerID++)
+		{
+			integer ppIntegerForID = pIntegerID;
+			llSay(0, "J'ai été touché par " + llKey2Name(gKeyChave) + " et il a l'ID = " + (string)ppIntegerForID);
+		}
+		
+		// Les variables "e" existent uniquement pendant l'exécution de l'événement.
+	}
+}
+
+Ce sont les règles que j'utilise dans la spécification de nomenclature des variables. Bien sûr, il y a d'autres considérations qui ne sont pas incluses ici, comme utiliser seulement 3 lettres lors de la déclaration du type (ex. : eIntTotal). Il est toujours recommandé de nommer les variables en anglais... c'est plus stylé ! 😄
+
+Ceci est un résumé de ma spécification de nomenclature des variables. Au fur et à mesure qu'elle sera mise à jour avec plus d'informations, elle sera publiée.
+
+Cordialement,
+Augustus
