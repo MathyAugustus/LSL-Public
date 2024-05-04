@@ -1,0 +1,130 @@
+key gKeyNotecardQueryId;
+
+integer gIntegerNotecardLine;
+integer gIntegerLLNumber;
+integer gIntegerIsRed = FALSE;
+
+list gListNUmberOfLLInLine;
+
+string gStringNotecardName = "notecard";
+
+gProceduteInit()
+{
+    
+    llOwnerSay("Calculating!");
+    llSetText("Calculating!",<1.0,0.0,0.0>,1.0);    
+    
+    gIntegerLLNumber = 0;
+    gIntegerNotecardLine = 0;
+        
+    gKeyNotecardQueryId = llGetNotecardLine("notecard", gIntegerNotecardLine);    
+    
+}
+
+default
+{
+
+    state_entry()
+    {
+        
+        llOwnerSay("Pricer Running!");
+        
+        llSetColor(<1.0,1.0,1.0>,ALL_SIDES);
+        llSetText("Pricer Running!",<0.0,1.0,0.0>,1.0);
+        
+    }
+
+    dataserver(key eKeyQueryID, string eStringData)
+    {
+        
+        if (eKeyQueryID == gKeyNotecardQueryId)
+        {
+            
+            if (eStringData == EOF)
+            {
+                
+                llOwnerSay("No more lines in notecard, read " + (string) gIntegerNotecardLine + " lines.");
+                llOwnerSay("Number of LLs : " + (string)gIntegerLLNumber );
+                llSay(0, "Total = L$ " + (string)(gIntegerLLNumber * ( gIntegerNotecardLine / 2 ) / 10 ) );
+                
+                llSetColor(<1.0,1.0,1.0>,ALL_SIDES);
+                
+                llSetText("Total = L$ " + (string)(gIntegerLLNumber * ( gIntegerNotecardLine / 2 ) / 10 ),<1.0,0.0,0.0>,1.0);
+                
+                llSetTimerEvent( 10.0 );
+                
+            }
+            else
+            {
+
+                ++gIntegerNotecardLine;
+                gIntegerIsRed = !gIntegerIsRed;
+                
+                if( gIntegerIsRed )
+                {
+                    
+                    llSetColor(<1.0,0.0,0.0>,ALL_SIDES);
+                    
+                }
+                else
+                {
+                    
+                    llSetColor(<0.0,0.0,1.0>,ALL_SIDES);
+                    
+                }
+                
+                {
+                    
+                    gListNUmberOfLLInLine = llParseString2List( eStringData, ["ll"], [] );
+                
+                    if( llGetListLength( gListNUmberOfLLInLine ) <= 0 )
+                    {
+                    
+                        gIntegerLLNumber++;
+                    
+                    }
+                    else
+                    {
+                    
+                        gIntegerLLNumber += (llGetListLength( gListNUmberOfLLInLine ) - 1 );
+                    
+                    }
+                    
+                }
+                
+                gKeyNotecardQueryId = llGetNotecardLine("notecard", gIntegerNotecardLine);
+                
+            }
+            
+        }
+        
+    }
+
+    touch_start(integer total_number)
+    {
+        
+        
+        gProceduteInit();
+
+    }
+
+    changed(integer eIntegerChange)
+    {
+
+        if (eIntegerChange & CHANGED_INVENTORY )
+        {
+
+            gProceduteInit();
+
+        }
+
+    }
+    
+    timer()
+    {
+        
+        llResetScript();
+        
+    }
+
+}
