@@ -1,0 +1,72 @@
+integer gIntegerLightOn = FALSE;
+
+float gFloatTime = 0.1;
+
+default
+{
+    
+    state_entry()
+    {
+        
+        llSay(0, "Clique para piscar a lâmpada!");
+        
+        llSetColor( <1.0,0.0,0.0>,ALL_SIDES);
+        
+    }
+
+    touch_start(integer eIntegerID)
+    {
+        
+        integer pIntegerI;
+        for( pIntegerI = 0; pIntegerI < eIntegerID; pIntegerI++)
+            if( llDetectedKey( pIntegerI ) == llGetOwner() )
+                state blink;
+                
+        
+    }
+    
+}
+
+state blink
+{
+    
+    state_entry()
+    {
+        
+        llSay(0,"Piscando!");
+        
+        llSetTimerEvent(gFloatTime);
+        
+    }
+    
+    touch_start(integer eIntegerID )
+    {
+        
+        integer pIntegerI;
+        for( pIntegerI = 0; pIntegerI < eIntegerID; pIntegerI++)
+            if( llDetectedKey( pIntegerI ) == llGetOwner() )
+                state default;
+                
+    }
+    
+    timer()
+    {
+        
+        if( gIntegerLightOn )
+        {
+            
+            llSetPrimitiveParams([PRIM_FULLBRIGHT, ALL_SIDES, TRUE, PRIM_POINT_LIGHT, TRUE, <1, 0, 0>, 10.0, 10.0, 0.8]);
+            
+        }
+        else
+        {
+            
+            llSetPrimitiveParams([PRIM_FULLBRIGHT, ALL_SIDES, FALSE, PRIM_POINT_LIGHT, FALSE, <0, 0, 0>, 0.0, 0.0, 0.0]);
+            
+        }
+        
+        gIntegerLightOn = !gIntegerLightOn;
+        
+    }        
+    
+}
