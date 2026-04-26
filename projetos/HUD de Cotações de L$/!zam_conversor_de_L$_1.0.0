@@ -1,0 +1,1030 @@
+// Configurações de cotação
+float lindenPorDolarCompra = 247.0;    // Quantos L$ por 1 USD para COMPRA (fallback)
+float lindenPorDolarVenda = 247.0;     // Quantos L$ por 1 USD para VENDA (fallback) 
+float dolarParaReal = 5.43;            // cotação comercial
+float dolarParaRealBcb = 5.43;         // cotação oficial BCB
+float dolarParaRealPaypal = 5.43;      // PayPal: BCB - 4.5%
+
+// Lista de webservices para USD/BRL - em ordem de prioridade
+list usdbrl_webservices = [
+    // 1. HG Brasil (funcionou bem nos testes)
+    "https://api.hgbrasil.com/finance?format=json-cors",
+    
+    // 2. AwesomeAPI (tradicional)
+    "https://economia.awesomeapi.com.br/json/last/USD-BRL",
+    
+    // 3. AwesomeAPI alternativa
+    "https://economia.awesomeapi.com.br/all/USD-BRL",
+    
+    // 4. BCB PTAX (oficial)
+    "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao='{DATA}'&$top=1&$format=json",
+    
+    // 5. ExchangeRate-API
+    "https://api.exchangerate-api.com/v4/latest/USD",
+    
+    // 6. CurrencyAPI
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
+    
+    // 7. VatComply
+    "https://api.vatcomply.com/rates?base=USD",
+    
+    // 8. Frankfurter (Open Source)
+    "https://api.frankfurter.app/latest?from=USD&to=BRL",
+    
+    // 9. Open Exchange Rates (free tier)
+    "https://open.er-api.com/v6/latest/USD",
+    
+    // 10. API de Fallback - CoinGecko
+    "https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl"
+];
+
+// Lista de webservices para Lindex (L$/USD)
+list lindex_webservices = [
+    // 1. API oficial da Second Life
+    "https://api.secondlife.com/datafeeds/lindex.xml",
+    
+    // 2. Endpoint alternativo
+    "https://cap.secondlife.com/cap/0/b713fe80-283b-4585-af4d-a3b2d7c5b1d8?grid=secondlife",
+    
+    // 3. Cache de terceiros
+    "https://lindex.secondlifegrid.net/datafeeds/lindex.xml"
+];
+
+// Variáveis de controle
+integer current_usdbrl_index = 0;
+integer current_lindex_index = 0;
+key http_request_id; // ID da requisição HTTP atual
+integer request_type = 0; // 0 = Lindex, 1 = USD/BRL
+
+key dialog_user;     // Usuário atual no diálogo
+integer listener_id; // ID do listener atual
+integer waiting_value = FALSE; // Esperando valor do usuário
+integer quote_type;  // 0=Comercial, 1=PayPal
+integer conversion_direction; // 0=L$→R$, 1=R$→L$
+
+// Menus
+list MENU_COTACOES = [
+    "Comercial (Atual)",
+    "PayPal (BCB -4.5%)",
+    "Cancelar"
+];
+
+list MENU_DIRECAO = [
+    "L$ → R$",
+    "R$ → L$",
+    "Voltar"
+];
+
+// ===== FUNÇÕES AUXILIARES =====
+
+// Obtém data atual no formato YYYY-MM-DD
+string get_current_date()
+{
+    string timestamp = llGetTimestamp();
+    list parts = llParseString2List(timestamp, ["-", "T"], []);
+    return llList2String(parts, 0) + "-" + llList2String(parts, 1) + "-" + llList2String(parts, 2);
+}
+
+// Substitui {DATA} na URL pela data atual
+string prepare_url(string url)
+{
+    string data_atual = get_current_date();
+    return llDumpList2String(llParseString2List(url, ["{DATA}"], []), data_atual);
+}
+
+// Função para calcular cotação PayPal (BCB - 4.5%)
+calculate_paypal_rate()
+{
+    dolarParaRealPaypal = dolarParaRealBcb * 0.955; // Redução de 4.5%
+}
+
+// Parseia XML/LSDS do Lindex - VERSÃO ATUALIZADA para pegar COMPRA e VENDA
+integer parse_lindex_xml(string body)
+{
+    integer buy_found = FALSE;
+    integer sell_found = FALSE;
+    
+    // 1. Procura por "market_buy" (COMPRA)
+    integer buy_pos = llSubStringIndex(body, "<key>market_buy</key>");
+    if (buy_pos != -1)
+    {
+        // Depois de market_buy, procura por períodos de tempo
+        list time_periods = ["1_hour", "today", "1_day"];
+        integer p;
+        
+        for (p = 0; p < llGetListLength(time_periods); p = p + 1)
+        {
+            string period = llList2String(time_periods, p);
+            string period_tag = "<key>" + period + "</key>";
+            integer period_pos = llSubStringIndex(llGetSubString(body, buy_pos, -1), period_tag);
+            
+            if (period_pos != -1)
+            {
+                period_pos = period_pos + buy_pos;
+                
+                // Procura por max_rate (para compra)
+                string rate_tag = "<key>max_rate</key>";
+                integer rate_pos = llSubStringIndex(llGetSubString(body, period_pos, -1), rate_tag);
+                
+                if (rate_pos == -1)
+                {
+                    // Tenta min_rate como fallback
+                    rate_tag = "<key>min_rate</key>";
+                    rate_pos = llSubStringIndex(llGetSubString(body, period_pos, -1), rate_tag);
+                }
+                
+                if (rate_pos != -1)
+                {
+                    rate_pos = rate_pos + period_pos;
+                    
+                    // Agora procura o valor integer após esta tag
+                    integer int_start = llSubStringIndex(llGetSubString(body, rate_pos, -1), "<integer>");
+                    if (int_start != -1)
+                    {
+                        int_start = int_start + 9;
+                        integer int_end = llSubStringIndex(llGetSubString(body, rate_pos + int_start, -1), "</integer>");
+                        
+                        if (int_end != -1)
+                        {
+                            string rate_str = llGetSubString(body, rate_pos + int_start, rate_pos + int_start + int_end - 1);
+                            rate_str = llStringTrim(rate_str, STRING_TRIM);
+                            
+                            float rate = (float)rate_str;
+                            
+                            // Valida se está na faixa razoável para L$/USD
+                            if (rate > 150.0 && rate < 350.0)
+                            {
+                                lindenPorDolarCompra = rate;
+                                llOwnerSay("✅ COMPRA (market_buy) para " + period + ": " + rate_str + " L$/USD");
+                                buy_found = TRUE;
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 2. Procura por "market_sell" (VENDA)
+    integer sell_pos = llSubStringIndex(body, "<key>market_sell</key>");
+    if (sell_pos != -1)
+    {
+        // Depois de market_sell, procura por períodos de tempo
+        list time_periods = ["1_hour", "today", "1_day"];
+        integer p;
+        
+        for (p = 0; p < llGetListLength(time_periods); p = p + 1)
+        {
+            string period = llList2String(time_periods, p);
+            string period_tag = "<key>" + period + "</key>";
+            integer period_pos = llSubStringIndex(llGetSubString(body, sell_pos, -1), period_tag);
+            
+            if (period_pos != -1)
+            {
+                period_pos = period_pos + sell_pos;
+                
+                // Procura por min_rate (para venda)
+                string rate_tag = "<key>min_rate</key>";
+                integer rate_pos = llSubStringIndex(llGetSubString(body, period_pos, -1), rate_tag);
+                
+                if (rate_pos == -1)
+                {
+                    // Tenta max_rate como fallback
+                    rate_tag = "<key>max_rate</key>";
+                    rate_pos = llSubStringIndex(llGetSubString(body, period_pos, -1), rate_tag);
+                }
+                
+                if (rate_pos != -1)
+                {
+                    rate_pos = rate_pos + period_pos;
+                    
+                    // Agora procura o valor integer após esta tag
+                    integer int_start = llSubStringIndex(llGetSubString(body, rate_pos, -1), "<integer>");
+                    if (int_start != -1)
+                    {
+                        int_start = int_start + 9;
+                        integer int_end = llSubStringIndex(llGetSubString(body, rate_pos + int_start, -1), "</integer>");
+                        
+                        if (int_end != -1)
+                        {
+                            string rate_str = llGetSubString(body, rate_pos + int_start, rate_pos + int_start + int_end - 1);
+                            rate_str = llStringTrim(rate_str, STRING_TRIM);
+                            
+                            float rate = (float)rate_str;
+                            
+                            // Valida se está na faixa razoável para L$/USD
+                            if (rate > 150.0 && rate < 350.0)
+                            {
+                                lindenPorDolarVenda = rate;
+                                llOwnerSay("✅ VENDA (market_sell) para " + period + ": " + rate_str + " L$/USD");
+                                sell_found = TRUE;
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 3. Fallback: procura por "limit_buy" e "limit_sell"
+    if (!buy_found)
+    {
+        integer limit_buy_pos = llSubStringIndex(body, "<key>limit_buy</key>");
+        if (limit_buy_pos != -1)
+        {
+            integer best_10_pos = llSubStringIndex(llGetSubString(body, limit_buy_pos, -1), "<key>best_10_percent</key>");
+            if (best_10_pos != -1)
+            {
+                best_10_pos = best_10_pos + limit_buy_pos;
+                
+                integer min_rate_pos = llSubStringIndex(llGetSubString(body, best_10_pos, -1), "<key>min_rate</key>");
+                if (min_rate_pos != -1)
+                {
+                    min_rate_pos = min_rate_pos + best_10_pos;
+                    
+                    integer int_start = llSubStringIndex(llGetSubString(body, min_rate_pos, -1), "<integer>");
+                    if (int_start != -1)
+                    {
+                        int_start = int_start + 9;
+                        integer int_end = llSubStringIndex(llGetSubString(body, min_rate_pos + int_start, -1), "</integer>");
+                        
+                        if (int_end != -1)
+                        {
+                            string rate_str = llGetSubString(body, min_rate_pos + int_start, min_rate_pos + int_start + int_end - 1);
+                            rate_str = llStringTrim(rate_str, STRING_TRIM);
+                            
+                            float rate = (float)rate_str;
+                            if (rate > 150.0 && rate < 350.0)
+                            {
+                                lindenPorDolarCompra = rate;
+                                llOwnerSay("✅ COMPRA (limit_buy): " + rate_str + " L$/USD");
+                                buy_found = TRUE;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (!sell_found)
+    {
+        integer limit_sell_pos = llSubStringIndex(body, "<key>limit_sell</key>");
+        if (limit_sell_pos != -1)
+        {
+            integer best_10_pos = llSubStringIndex(llGetSubString(body, limit_sell_pos, -1), "<key>best_10_percent</key>");
+            if (best_10_pos != -1)
+            {
+                best_10_pos = best_10_pos + limit_sell_pos;
+                
+                integer min_rate_pos = llSubStringIndex(llGetSubString(body, best_10_pos, -1), "<key>min_rate</key>");
+                if (min_rate_pos != -1)
+                {
+                    min_rate_pos = min_rate_pos + best_10_pos;
+                    
+                    integer int_start = llSubStringIndex(llGetSubString(body, min_rate_pos, -1), "<integer>");
+                    if (int_start != -1)
+                    {
+                        int_start = int_start + 9;
+                        integer int_end = llSubStringIndex(llGetSubString(body, min_rate_pos + int_start, -1), "</integer>");
+                        
+                        if (int_end != -1)
+                        {
+                            string rate_str = llGetSubString(body, min_rate_pos + int_start, min_rate_pos + int_start + int_end - 1);
+                            rate_str = llStringTrim(rate_str, STRING_TRIM);
+                            
+                            float rate = (float)rate_str;
+                            if (rate > 150.0 && rate < 350.0)
+                            {
+                                lindenPorDolarVenda = rate;
+                                llOwnerSay("✅ VENDA (limit_sell): " + rate_str + " L$/USD");
+                                sell_found = TRUE;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 4. Fallback final: procura qualquer número na faixa
+    if (!buy_found || !sell_found)
+    {
+        list tokens = llParseString2List(body, ["<", ">", "/", " ", "\t", "\n", "\r", "\"", "'"], []);
+        integer i;
+        integer found_count = 0;
+        
+        for (i = 0; i < llGetListLength(tokens); i = i + 1)
+        {
+            string token = llList2String(tokens, i);
+            
+            // Verifica se é um número
+            if ((float)token != 0.0 || token == "0" || token == "0.0")
+            {
+                float rate = (float)token;
+                if (rate > 150.0 && rate < 350.0)
+                {
+                    // Verifica se parece uma taxa (geralmente números inteiros ou com .0)
+                    if (llStringLength(token) <= 6) // 245, 254.0, etc
+                    {
+                        if (!buy_found)
+                        {
+                            lindenPorDolarCompra = rate;
+                            buy_found = TRUE;
+                            llOwnerSay("⚠️ COMPRA (fallback): " + token + " L$/USD");
+                        }
+                        else if (!sell_found)
+                        {
+                            lindenPorDolarVenda = rate;
+                            sell_found = TRUE;
+                            llOwnerSay("⚠️ VENDA (fallback): " + token + " L$/USD");
+                            return 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Se encontrou apenas uma, usa o mesmo valor para ambas
+    if (buy_found && !sell_found)
+    {
+        lindenPorDolarVenda = lindenPorDolarCompra;
+        llOwnerSay("⚠️ Usando mesma taxa para venda: " + (string)lindenPorDolarVenda + " L$/USD");
+        sell_found = TRUE;
+    }
+    else if (!buy_found && sell_found)
+    {
+        lindenPorDolarCompra = lindenPorDolarVenda;
+        llOwnerSay("⚠️ Usando mesma taxa para compra: " + (string)lindenPorDolarCompra + " L$/USD");
+        buy_found = TRUE;
+    }
+    
+    return (buy_found && sell_found);
+}
+
+// Atualiza o texto flutuante do HUD
+update_display()
+{
+    // Cálculo para COMPRA (R$ → L$)
+    float dolarPorLindenCompra = 1.0 / lindenPorDolarCompra;
+    float realPorLindenCompra = dolarPorLindenCompra * dolarParaReal;
+    float lindenPorRealCompra = 1.0 / realPorLindenCompra;
+    
+    // Cálculo para VENDA (L$ → R$) COM 5% DESCONTO
+    float dolarPorLindenVenda = 1.0 / lindenPorDolarVenda;
+    float dolarPorLindenComDesconto = dolarPorLindenVenda * 0.95; // 5% de desconto
+    float realPorLindenVenda = dolarPorLindenComDesconto * dolarParaReal;
+    float lindenPorRealVenda = 1.0 / realPorLindenVenda;
+    
+    // Para referência: venda sem desconto
+    float realPorLindenVendaSemDesconto = dolarPorLindenVenda * dolarParaReal;
+    
+    string texto = "=== COTAÇÕES ATUALIZADAS ===\n\n"
+                 + "💰 COMPRA (R$ → L$):\n"
+                 + "R$ 1,00 = L$ " + (string)llRound(lindenPorRealCompra) + "\n"
+                 + "1 L$ = R$ " + (string)(llRound(realPorLindenCompra * 10000.0) / 10000.0) + "\n\n"
+                 + "💵 VENDA (L$ → R$):\n"
+                 + "R$ 1,00 = L$ " + (string)llRound(lindenPorRealVenda) + "\n"
+                 + "1 L$ = R$ " + (string)(llRound(realPorLindenVenda * 10000.0) / 10000.0) + "\n"
+                 + "     (c/ 5% desconto)\n\n"
+                 + "USD/BRL: " + (string)(llRound(dolarParaReal * 100.0) / 100.0) + "\n"
+                 + "USD/L$ Compra: " + (string)llRound(lindenPorDolarCompra) + "\n"
+                 + "USD/L$ Venda: " + (string)llRound(lindenPorDolarVenda) + "\n\n"
+                 + "Toque para conversor";
+
+    llSetText(texto, <1.0, 1.0, 1.0>, 1.0);
+}
+
+// Inicia processo de atualização
+update_rates()
+{
+    llSetText("Atualizando...", <1.0, 1.0, 0.0>, 1.0);
+    
+    // Reseta índices
+    current_lindex_index = 0;
+    current_usdbrl_index = 0;
+    
+    // Começa pelo Lindex
+    request_type = 0;
+    try_next_lindex();
+}
+
+// Tenta próximo webservice do Lindex
+try_next_lindex()
+{
+    if (current_lindex_index >= llGetListLength(lindex_webservices))
+    {
+        llOwnerSay("❌ Todos os webservices Lindex falharam. Usando valor padrão.");
+        // Depois de tentar todos Lindex, vai para USD/BRL
+        request_type = 1;
+        try_next_usdbrl();
+        return;
+    }
+    
+    string url = llList2String(lindex_webservices, current_lindex_index);
+    llOwnerSay("Tentando Lindex #" + (string)(current_lindex_index + 1) + ": " + url);
+    
+    http_request_id = llHTTPRequest(url, [], "");
+    current_lindex_index = current_lindex_index + 1;
+}
+
+// Tenta próximo webservice USD/BRL
+try_next_usdbrl()
+{
+    if (current_usdbrl_index >= llGetListLength(usdbrl_webservices))
+    {
+        llOwnerSay("❌ Todos os webservices USD/BRL falharam. Usando valores atuais.");
+        calculate_paypal_rate();
+        update_display();
+        return;
+    }
+    
+    string url = llList2String(usdbrl_webservices, current_usdbrl_index);
+    url = prepare_url(url); // Substitui {DATA} se existir
+    
+    llOwnerSay("Tentando USD/BRL #" + (string)(current_usdbrl_index + 1));
+    
+    http_request_id = llHTTPRequest(url, [], "");
+    current_usdbrl_index = current_usdbrl_index + 1;
+}
+
+// ===== FUNÇÕES DE PARSING USD/BRL =====
+// Parseia resposta USD/BRL de vários serviços
+float parse_usdbrl_response(string body, integer service_index)
+{
+    // Remove espaços para facilitar parsing
+    body = llDumpList2String(llParseString2List(body, [" ", "\t", "\n"], []), "");
+    
+    // Tenta diferentes parsers baseado no índice do serviço
+    if (service_index == 0) // HG Brasil
+    {
+        integer start = llSubStringIndex(body, "\"USD\":{\"buy\":");
+        if (start != -1)
+        {
+            start = start + 13; // Comprimento de "\"USD\":{\"buy\":"
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 1 || service_index == 2) // AwesomeAPI
+    {
+        // Procura por "bid" ou "ask"
+        list keys = ["\"bid\":\"", "\"ask\":\"", "\"high\":\"", "\"low\":\""];
+        integer k;
+        for (k = 0; k < llGetListLength(keys); k = k + 1)
+        {
+            string keyvar = llList2String(keys, k);
+            integer start = llSubStringIndex(body, keyvar);
+            if (start != -1)
+            {
+                start = start + llStringLength(keyvar);
+                integer end = llSubStringIndex(llGetSubString(body, start, -1), "\"");
+                if (end != -1)
+                {
+                    string rateStr = llGetSubString(body, start, start + end - 1);
+                    return (float)rateStr;
+                }
+            }
+        }
+    }
+    else if (service_index == 3) // BCB PTAX
+    {
+        integer start = llSubStringIndex(body, "\"cotacaoCompra\":");
+        if (start != -1)
+        {
+            start = start + 16;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 4) // ExchangeRate-API
+    {
+        integer start = llSubStringIndex(body, "\"BRL\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 5) // CurrencyAPI
+    {
+        integer start = llSubStringIndex(body, "\"brl\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 6) // VatComply
+    {
+        integer start = llSubStringIndex(body, "\"BRL\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 7) // Frankfurter
+    {
+        integer start = llSubStringIndex(body, "\"BRL\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 8) // Open Exchange Rates
+    {
+        integer start = llSubStringIndex(body, "\"BRL\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    else if (service_index == 9) // CoinGecko
+    {
+        integer start = llSubStringIndex(body, "\"brl\":");
+        if (start != -1)
+        {
+            start = start + 6;
+            integer end = llSubStringIndex(llGetSubString(body, start, -1), ",");
+            if (end == -1) end = llSubStringIndex(llGetSubString(body, start, -1), "}");
+            if (end != -1)
+            {
+                string rateStr = llGetSubString(body, start, start + end - 1);
+                return (float)rateStr;
+            }
+        }
+    }
+    
+    // Fallback: procura qualquer número que pareça uma cotação USD/BRL
+    list words = llParseString2List(body, [",", ":", "{", "}", "[", "]", "\""], []);
+    integer i;
+    for (i = 0; i < llGetListLength(words); i = i + 1)
+    {
+        string word = llList2String(words, i);
+        float rate = (float)word;
+        // Validação: cotação USD/BRL deve estar entre 1.0 e 10.0
+        if (rate > 1.0 && rate < 10.0 && llStringLength(word) > 3)
+        {
+            return rate;
+        }
+    }
+    
+    return 0.0;
+}
+
+// ===== FUNÇÕES DO MENU/CONVERSOR =====
+
+show_cotacao_menu(key user)
+{
+    dialog_user = user;
+    listener_id = llListen(-9999, "", user, "");
+    
+    string dolar_real_str = (string)(llRound(dolarParaReal * 100.0) / 100.0);
+    string dolar_paypal_str = (string)(llRound(dolarParaRealPaypal * 100.0) / 100.0);
+    
+    llDialog(user, 
+        "\n📊 ESCOLHA A COTAÇÃO:\n\n" +
+        "1. Comercial (Atual)\n" +
+        "   • 1 USD = R$ " + dolar_real_str + "\n" +
+        "2. PayPal (BCB -4.5%)\n" +
+        "   • 1 USD = R$ " + dolar_paypal_str + "\n\n" +
+        "Selecione uma opção:",
+        MENU_COTACOES,
+        -9999);
+    
+    llSetTimerEvent(30.0);
+}
+
+show_direcao_menu(key user)
+{
+    string nome_cotacao;
+    if (quote_type == 0)
+    {
+        nome_cotacao = "Comercial";
+    }
+    else
+    {
+        nome_cotacao = "PayPal";
+    }
+    
+    float taxa;
+    if (quote_type == 0)
+    {
+        taxa = dolarParaReal;
+    }
+    else
+    {
+        taxa = dolarParaRealPaypal;
+    }
+    
+    // Cálculo para COMPRA (R$ → L$)
+    float dolarPorLindenCompra = 1.0 / lindenPorDolarCompra;
+    float realPorLindenCompra = dolarPorLindenCompra * taxa;
+    float lindenPorRealCompra = 1.0 / realPorLindenCompra;
+    
+    // Cálculo para VENDA (L$ → R$) COM DESCONTO
+    float dolarPorLindenVenda = 1.0 / lindenPorDolarVenda;
+    float dolarPorLindenComDesconto = dolarPorLindenVenda * 0.95;
+    float realPorLindenVenda = dolarPorLindenComDesconto * taxa;
+    float lindenPorRealVenda = 1.0 / realPorLindenVenda;
+    
+    string compra_str = "R$ 1,00 = L$ " + (string)llRound(lindenPorRealCompra);
+    string venda_str = "L$ 1,00 = R$ " + (string)(llRound(realPorLindenVenda * 10000.0) / 10000.0);
+    
+    llDialog(user,
+        "\n🔄 TIPO DE CONVERSÃO:\n\n" +
+        "Cotação: " + nome_cotacao + "\n\n" +
+        "💰 COMPRA (R$ → L$):\n" +
+        compra_str + "\n\n" +
+        "💵 VENDA (L$ → R$):\n" +
+        venda_str + " (com 5% desconto)\n\n" +
+        "Escolha a direção da conversão:",
+        MENU_DIRECAO,
+        -9998);
+}
+
+converter_linden_para_real(integer quantidade, integer cotacao_tipo)
+{
+    float taxa_usd_brl;
+    string nome_cotacao;
+    
+    if (cotacao_tipo == 0)
+    {
+        taxa_usd_brl = dolarParaReal;
+        nome_cotacao = "Comercial (Atual)";
+    }
+    else
+    {
+        taxa_usd_brl = dolarParaRealPaypal;
+        nome_cotacao = "PayPal (BCB -4.5%)";
+    }
+    
+    // USANDO COTAÇÃO DE VENDA (lindenPorDolarVenda) + DESCONTO DE 5%
+    float dolarPorLindenVenda = 1.0 / lindenPorDolarVenda;
+    float dolarPorLindenComDesconto = dolarPorLindenVenda * 0.95; // Aplica 5% de desconto
+    
+    float realPorLinden = dolarPorLindenComDesconto * taxa_usd_brl;
+    float valor_em_reais = quantidade * realPorLinden;
+    
+    // Para referência: valor sem desconto
+    float realPorLindenSemDesconto = dolarPorLindenVenda * taxa_usd_brl;
+    float valor_sem_desconto = quantidade * realPorLindenSemDesconto;
+    
+    string taxa_str = (string)(llRound(taxa_usd_brl * 100.0) / 100.0);
+    string real_por_linden_sem_desc_str = (string)(llRound(realPorLindenSemDesconto * 10000.0) / 10000.0);
+    string real_por_linden_com_desc_str = (string)(llRound(realPorLinden * 10000.0) / 10000.0);
+    string valor_reais_str = (string)(llRound(valor_em_reais * 100.0) / 100.0);
+    string valor_sem_desc_str = (string)(llRound(valor_sem_desconto * 100.0) / 100.0);
+    
+    string mensagem = 
+        "\n=== CONVERSÃO L$ → R$ (VENDA) ===\n" +
+        "Quantidade: L$ " + (string)quantidade + "\n" +
+        "Cotação: " + nome_cotacao + "\n" +
+        "Taxa USD/BRL: 1 USD = R$ " + taxa_str + "\n" +
+        "Taxa VENDA L$/USD: 1 USD = L$ " + (string)llRound(lindenPorDolarVenda) + "\n" +
+        "1 L$ = R$ " + real_por_linden_sem_desc_str + " (cotação venda)\n" +
+        "1 L$ = R$ " + real_por_linden_com_desc_str + " (c/ 5% desconto)\n\n" +
+        "💰 RESULTADO:\n" +
+        "• Sem desconto: R$ " + valor_sem_desc_str + "\n" +
+        "• COM 5% DESCONTO: R$ " + valor_reais_str + "\n\n" +
+        "💰 VALOR FINAL (COM DESCONTO):\n" +
+        "L$ " + (string)quantidade + " = R$ " + valor_reais_str;
+    
+    llOwnerSay(mensagem);
+    
+    llSay(0, 
+        "💱 " + llGetDisplayName(dialog_user) + " VENDEU L$ " + (string)quantidade + 
+        " por R$ " + valor_reais_str + " (" + nome_cotacao + " com 5% desc.)");
+}
+
+converter_real_para_linden(float valor_reais, integer cotacao_tipo)
+{
+    float taxa_usd_brl;
+    string nome_cotacao;
+    
+    if (cotacao_tipo == 0)
+    {
+        taxa_usd_brl = dolarParaReal;
+        nome_cotacao = "Comercial (Atual)";
+    }
+    else
+    {
+        taxa_usd_brl = dolarParaRealPaypal;
+        nome_cotacao = "PayPal (BCB -4.5%)";
+    }
+    
+    // USANDO COTAÇÃO DE COMPRA (lindenPorDolarCompra) - SEM DESCONTO
+    float dolarPorLindenCompra = 1.0 / lindenPorDolarCompra;
+    float realPorLinden = dolarPorLindenCompra * taxa_usd_brl;
+    float lindenPorReal = 1.0 / realPorLinden;
+    float quantidade_linden = valor_reais * lindenPorReal;
+    
+    string taxa_str = (string)(llRound(taxa_usd_brl * 100.0) / 100.0);
+    string linden_por_real_str = (string)llRound(lindenPorReal);
+    string valor_reais_str = (string)(llRound(valor_reais * 100.0) / 100.0);
+    
+    string mensagem = 
+        "\n=== CONVERSÃO R$ → L$ (COMPRA) ===\n" +
+        "Quantidade: R$ " + valor_reais_str + "\n" +
+        "Cotação: " + nome_cotacao + "\n" +
+        "Taxa USD/BRL: 1 USD = R$ " + taxa_str + "\n" +
+        "Taxa COMPRA L$/USD: 1 USD = L$ " + (string)llRound(lindenPorDolarCompra) + "\n" +
+        "R$ 1,00 = L$ " + linden_por_real_str + " (cotação compra)\n\n" +
+        "💰 RESULTADO FINAL:\n" +
+        "R$ " + valor_reais_str + " = L$ " + (string)llRound(quantidade_linden);
+    
+    llOwnerSay(mensagem);
+    
+    llSay(0, 
+        "💱 " + llGetDisplayName(dialog_user) + " COMPROU L$ " + (string)llRound(quantidade_linden) + 
+        " por R$ " + valor_reais_str + " (" + nome_cotacao + ")");
+}
+
+// ===== EVENTOS PRINCIPAIS =====
+
+default
+{
+    state_entry()
+    {
+        llSetTimerEvent(3600.0); // Atualiza a cada hora
+        update_rates();
+    }
+
+    touch_start(integer total_number)
+    {
+        key user = llDetectedKey(0);
+        
+        update_rates();
+        llOwnerSay("Atualizando cotações para conversão...");
+        
+        llSleep(2.0);
+        show_cotacao_menu(user);
+    }
+
+    timer()
+    {
+        if (listener_id != 0)
+        {
+            llListenRemove(listener_id);
+            listener_id = 0;
+            waiting_value = FALSE;
+            llSetTimerEvent(3600.0);
+            return;
+        }
+        
+        update_rates();
+    }
+
+    http_response(key request_id, integer status, list metadata, string body)
+    {
+        if (request_id != http_request_id) return;
+        
+        if (request_type == 0) // Processando Lindex
+        {
+            if (status == 200)
+            {
+                integer success = parse_lindex_xml(body);
+                if (success)
+                {
+                    llOwnerSay("✅ Lindex atualizado: Compra=" + (string)llRound(lindenPorDolarCompra) + 
+                              " L$/USD, Venda=" + (string)llRound(lindenPorDolarVenda) + " L$/USD");
+                    
+                    // Sucesso no Lindex, agora busca USD/BRL
+                    request_type = 1;
+                    try_next_usdbrl();
+                    return;
+                }
+                else
+                {
+                    llOwnerSay("⚠️ Lindex #" + (string)current_lindex_index + " parse falhou.");
+                    try_next_lindex();
+                }
+            }
+            else
+            {
+                // Se falhou, tenta próximo Lindex
+                llOwnerSay("⚠️ Lindex #" + (string)current_lindex_index + " falhou (HTTP " + (string)status + ")");
+                try_next_lindex();
+            }
+        }
+        else if (request_type == 1) // Processando USD/BRL
+        {
+            if (status == 200)
+            {
+                // O índice atual é current_usdbrl_index - 1 porque já incrementamos
+                integer service_idx = current_usdbrl_index - 1;
+                float nova_taxa = parse_usdbrl_response(body, service_idx);
+                
+                if (nova_taxa > 1.0 && nova_taxa < 10.0)
+                {
+                    dolarParaReal = nova_taxa;
+                    dolarParaRealBcb = nova_taxa;
+                    calculate_paypal_rate();
+                    update_display();
+                    
+                    llOwnerSay("✅ USD/BRL #" + (string)current_usdbrl_index + ": " + (string)nova_taxa + " BRL/USD");
+                    
+                    // Mostra resultado final
+                    float dolarPorLindenCompra = 1.0 / lindenPorDolarCompra;
+                    float realPorLindenCompra = dolarPorLindenCompra * dolarParaReal;
+                    float lindenPorRealCompra = 1.0 / realPorLindenCompra;
+                    
+                    float dolarPorLindenVenda = 1.0 / lindenPorDolarVenda;
+                    float dolarPorLindenComDesconto = dolarPorLindenVenda * 0.95;
+                    float realPorLindenVenda = dolarPorLindenComDesconto * dolarParaReal;
+                    
+                    llOwnerSay("💰 COMPRA: R$ 1,00 = L$ " + (string)llRound(lindenPorRealCompra));
+                    llOwnerSay("💰 VENDA: 1 L$ = R$ " + (string)(llRound(realPorLindenVenda * 10000.0) / 10000.0) + " (c/ 5% desc.)");
+                    return;
+                }
+                else
+                {
+                    llOwnerSay("⚠️ USD/BRL #" + (string)current_usdbrl_index + " parse falhou.");
+                }
+            }
+            
+            // Se falhou, tenta próximo USD/BRL
+            llOwnerSay("⚠️ USD/BRL #" + (string)current_usdbrl_index + " falhou (HTTP " + (string)status + ")");
+            try_next_usdbrl();
+        }
+    }
+    
+    listen(integer channel, string name, key id, string message)
+    {
+        if (channel == -9999) // Menu de cotações
+        {
+            if (listener_id != 0) llListenRemove(listener_id);
+            
+            if (message == "Cancelar")
+            {
+                llOwnerSay("Conversão cancelada.");
+                listener_id = 0;
+                return;
+            }
+            
+            if (message == "Comercial (Atual)")
+            {
+                quote_type = 0;
+            }
+            else if (message == "PayPal (BCB -4.5%)")
+            {
+                quote_type = 1;
+            }
+            
+            show_direcao_menu(id);
+            listener_id = llListen(-9998, "", id, "");
+            llSetTimerEvent(30.0);
+        }
+        else if (channel == -9998) // Menu de direção
+        {
+            if (message == "Voltar")
+            {
+                show_cotacao_menu(id);
+                return;
+            }
+            
+            if (message == "L$ → R$")
+            {
+                conversion_direction = 0;
+                
+                float taxa = dolarParaReal;
+                if (quote_type == 1) taxa = dolarParaRealPaypal;
+                
+                float dolarPorLindenVenda = 1.0 / lindenPorDolarVenda;
+                float dolarPorLindenComDesconto = dolarPorLindenVenda * 0.95;
+                float realPorLindenVenda = dolarPorLindenComDesconto * taxa;
+                string real_por_linden_str = (string)(llRound(realPorLindenVenda * 10000.0) / 10000.0);
+                
+                string cotacao_nome = "Comercial";
+                if (quote_type == 1) cotacao_nome = "PayPal";
+                
+                llTextBox(id,
+                    "\n💵 CONVERSÃO L$ → R$ (VENDA)\n\n" +
+                    "Digite a quantidade de L$:\n\n" +
+                    "Exemplos:\n" +
+                    "1000   (mil lindens)\n" +
+                    "10000  (dez mil)\n" +
+                    "50000  (cinquenta mil)\n\n" +
+                    "Cotação: " + cotacao_nome + "\n" +
+                    "1 L$ = R$ " + real_por_linden_str + " (c/ 5% desc.)\n" +
+                    "Digite o valor em L$:",
+                    -9997);
+            }
+            else if (message == "R$ → L$")
+            {
+                conversion_direction = 1;
+                
+                float taxa = dolarParaReal;
+                if (quote_type == 1) taxa = dolarParaRealPaypal;
+                
+                float dolarPorLindenCompra = 1.0 / lindenPorDolarCompra;
+                float realPorLindenCompra = dolarPorLindenCompra * taxa;
+                float lindenPorRealCompra = 1.0 / realPorLindenCompra;
+                string linden_por_real_str = (string)llRound(lindenPorRealCompra);
+                
+                string cotacao_nome = "Comercial";
+                if (quote_type == 1) cotacao_nome = "PayPal";
+                
+                llTextBox(id,
+                    "\n💵 CONVERSÃO R$ → L$ (COMPRA)\n\n" +
+                    "Digite a quantidade em Reais:\n\n" +
+                    "Exemplos:\n" +
+                    "10.00   (dez reais)\n" +
+                    "50.00   (cinquenta reais)\n" +
+                    "100.00  (cem reais)\n\n" +
+                    "Cotação: " + cotacao_nome + "\n" +
+                    "R$ 1,00 = L$ " + linden_por_real_str + "\n" +
+                    "Digite o valor em R$ (use ponto para decimal):",
+                    -9997);
+            }
+            
+            listener_id = llListen(-9997, "", id, "");
+            waiting_value = TRUE;
+            llSetTimerEvent(60.0);
+        }
+        else if (channel == -9997 && waiting_value)
+        {
+            llListenRemove(listener_id);
+            listener_id = 0;
+            waiting_value = FALSE;
+            
+            if (conversion_direction == 0) // L$ → R$ (VENDA)
+            {
+                integer quantidade = (integer)message;
+                if (quantidade <= 0)
+                {
+                    llOwnerSay("Erro: Digite um número positivo de L$ (ex: 1000).");
+                    return;
+                }
+                converter_linden_para_real(quantidade, quote_type);
+            }
+            else // R$ → L$ (COMPRA)
+            {
+                float valor = (float)message;
+                if (valor <= 0.0)
+                {
+                    llOwnerSay("Erro: Digite um valor positivo em reais (ex: 10.00).");
+                    return;
+                }
+                converter_real_para_linden(valor, quote_type);
+            }
+            
+            llSetTimerEvent(3600.0);
+        }
+    }
+    
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER) llResetScript();
+    }
+    
+    on_rez(integer start_param)
+    {
+        llResetScript();
+    }
+}
