@@ -1,0 +1,165 @@
+key gKeyNotecardQueryId;
+
+integer gIntegerNotecardLine;
+integer gIntegerLLNumber;
+integer gIntegerIsRed = FALSE;
+
+list gListNUmberOfLLInLine;
+
+string gStringNotecardName = "notecard";
+
+gProceduteInit()
+{
+    
+    string pStringMessage = "Calculating!";
+    llOwnerSay(pStringMessage);
+
+    gProcedureFade(pStringMessage,<1.0,0.0,0.0>,0.01);
+    
+    gIntegerLLNumber = 0;
+    gIntegerNotecardLine = 0;
+        
+    gKeyNotecardQueryId = llGetNotecardLine("notecard", gIntegerNotecardLine);    
+    
+}
+
+gProcedureFade(string pStringMessage,vector pVectorColor,float pFloatFade)
+{
+    
+    float pFloatStart;
+    float pFloatEnd;
+    
+    if( pFloatFade > 0 )
+    {
+        
+        pFloatStart = 0.0;
+        pFloatEnd = 1.0;
+        
+    }
+    else
+    {
+        
+        pFloatStart = 1.0;
+        pFloatEnd = 0.0;
+        
+    }
+    
+    float pFloatAngle;
+    for( pFloatAngle = 0; pFloatAngle <= pFloatEnd; pFloatAngle += pFloatFade)
+        llSetText(pStringMessage,pVectorColor,pFloatAngle);   
+    
+}
+
+default
+{
+
+    state_entry()
+    {
+     
+        string pStringMessage = "Price Calculator OK!\nCopy and paste your LSL in to the Notecard and save!\nWait for the result with the price suggestion!";   
+        llOwnerSay(pStringMessage);
+        
+        llSetColor(<1.0,1.0,1.0>,ALL_SIDES);
+        gProcedureFade(pStringMessage,<0.0,1.0,0.0>,0.01);
+        
+    }
+
+    dataserver(key eKeyQueryID, string eStringData)
+    {
+        
+        if (eKeyQueryID == gKeyNotecardQueryId)
+        {
+            
+            if (eStringData == EOF)
+            {
+                
+                llOwnerSay("No more lines in notecard, read " + (string) gIntegerNotecardLine + " lines.");
+                llOwnerSay("Number of LLs : " + (string)gIntegerLLNumber );
+                
+                string pStringTotal = (string)(gIntegerLLNumber * ( gIntegerNotecardLine / 2 ) / 10 );
+                
+                llSay(0, "Total = L$ " + pStringTotal );
+                
+                llSetColor(<1.0,1.0,1.0>,ALL_SIDES);
+                
+                gProcedureFade("Total = L$ " + pStringTotal,<1.0,0.0,0.0>,0.01);
+                
+                llSetTimerEvent( 10.0 );
+                
+            }
+            else
+            {
+
+                ++gIntegerNotecardLine;
+                gIntegerIsRed = !gIntegerIsRed;
+                
+                if( gIntegerIsRed )
+                {
+                    
+                    llSetColor(<1.0,0.0,0.0>,ALL_SIDES);
+                    
+                }
+                else
+                {
+                    
+                    llSetColor(<0.0,0.0,1.0>,ALL_SIDES);
+                    
+                }
+                
+                {
+                    
+                    gListNUmberOfLLInLine = llParseString2List( eStringData, ["ll"], [] );
+                
+                    if( llGetListLength( gListNUmberOfLLInLine ) <= 0 )
+                    {
+                    
+                        gIntegerLLNumber++;
+                    
+                    }
+                    else
+                    {
+                    
+                        gIntegerLLNumber += (llGetListLength( gListNUmberOfLLInLine ) - 1 );
+                    
+                    }
+                    
+                }
+                
+                gKeyNotecardQueryId = llGetNotecardLine("notecard", gIntegerNotecardLine);
+                
+            }
+            
+        }
+        
+    }
+
+    touch_start(integer total_number)
+    {
+        
+        
+        gProceduteInit();
+
+    }
+
+    changed(integer eIntegerChange)
+    {
+
+        if (eIntegerChange & CHANGED_INVENTORY )
+        {
+
+            gProceduteInit();
+
+        }
+
+    }
+    
+    timer()
+    {
+        
+        gProcedureFade("Click To calculate again!",<1.0,0.0,0.0>,0.01);
+            
+        llResetScript();
+        
+    }
+
+}
