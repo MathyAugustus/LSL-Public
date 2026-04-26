@@ -1,0 +1,4 @@
+Olá este é um tip jar para second life feito em lsl ele tem um módulo de seleção de linguagem do usuário oir scan .
+Ele se comunica com o usuário pelas linguagens suportadas pelo site do second life e se comunica com o usuário em sua própria linguagem.
+Caso ele esteje com o viewer em uma linguagem não suportada pelo viewer do Second Life Oficial ele mostra mensagens em inglês
+como padrão!
