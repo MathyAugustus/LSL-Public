@@ -1,0 +1,198 @@
+//Este script ajuda no gerenciamento de contas com multiploes avatares 
+//Ele pega chaves de quem pode tocar e para quem vão as transferências 
+//Envia o dinheiro de seu safe avatar para o avatar de saque
+//Foi originalmente criado em um Blender o Objeto de uma galinha que ao ser tocada pelo gerente cacaraeja 
+//enquanto penas voam e o dinheiro do safe avatar vai para o avatar que tem o saque ( paypal ) confgigurado
+tring gStringTexturaPena = "7879822f-393e-2979-44fa-6c007258c163";
+string gStringSomGalinha = "a3d7ebf8-636d-2d00-deec-352810eeb459";
+string gStringQuemPodeDepenar = "76616810-7ec9-458b-9488-8bd8281113af";
+string gStringRecipient = "augustusmathyii@gmail.com";
+
+integer pIntegerEfeitoAtivo = FALSE;
+integer gIntegerMoneyValue;
+integer gIntegerPermsOK = FALSE;
+
+key gKeyTransactionID = NULL_KEY;
+key gKeyTransferTo = "76616810-7ec9-458b-9488-8bd8281113af";
+
+gProcEmitirParticulas()
+{
+    
+    llParticleSystem([
+        PSYS_SRC_TEXTURE, gStringTexturaPena,
+        PSYS_PART_MAX_AGE, 3.0,
+        PSYS_PART_FLAGS, PSYS_PART_INTERP_COLOR_MASK | PSYS_PART_INTERP_SCALE_MASK |
+                         PSYS_PART_EMISSIVE_MASK | PSYS_PART_FOLLOW_VELOCITY_MASK,
+        PSYS_SRC_PATTERN, PSYS_SRC_PATTERN_EXPLODE,
+        PSYS_SRC_BURST_RATE, 0.02,
+        PSYS_SRC_ACCEL, <0.0, 0.0, 0.3>,
+        PSYS_PART_START_COLOR, <1.0, 1.0, 1.0>,
+        PSYS_PART_END_COLOR, <1.0, 1.0, 1.0>,
+        PSYS_PART_START_SCALE, <0.3, 0.3, 0.0>,
+        PSYS_PART_END_SCALE, <0.1, 0.1, 0.0>,
+        PSYS_SRC_BURST_PART_COUNT, 10,
+        PSYS_SRC_BURST_RADIUS, 0.0,
+        PSYS_SRC_BURST_SPEED_MIN, 0.3,
+        PSYS_SRC_BURST_SPEED_MAX, 0.6,
+        PSYS_SRC_ANGLE_BEGIN, 0.0,
+        PSYS_SRC_ANGLE_END, TWO_PI,
+        PSYS_SRC_OMEGA, <0.0, 0.0, 0.0>
+    ]);
+    
+}
+
+gProcStopParticulas()
+{
+    
+    llParticleSystem([]);
+    
+}
+
+default
+{
+    
+    state_entry()
+    {
+        
+        llSetText( llKey2Name( llGetOwner() ) , <1.0,0.0,0.0> , 1.0 );
+        
+        llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+        
+        llPreloadSound(gStringSomGalinha);
+            
+    }
+    
+    run_time_permissions (integer perm)
+    {
+        // when owner granted debit perms, enable piggy bank functionality
+        if(perm & PERMISSION_DEBIT)
+        {
+            
+            gIntegerPermsOK = TRUE;
+            llOwnerSay("Foi dada a permissão");
+            state waiting_touch;
+            
+        }
+            
+    }  
+    
+}
+
+state waiting_touch
+{
+    
+    state_entry()
+    {
+        
+        gProcStopParticulas();
+        
+        llOwnerSay("No estado a espera de mum toque!");
+        
+    }
+    
+    touch_start(integer eIntegerAVID)
+    {
+        
+        llOwnerSay("Tocado");
+        
+        integer pIntegerI;
+        for( pIntegerI = 0; pIntegerI < eIntegerAVID; pIntegerI++)
+        {
+        
+            llOwnerSay("no For");    
+            if( llDetectedKey(pIntegerI) == gKeyTransferTo && gIntegerPermsOK )
+            {
+            
+                llOwnerSay("Ok Pagando");
+                state paying;
+            
+            }
+            else
+            {
+            
+                llOwnerSay("Quem você pensa que é " + llDetectedName(pIntegerI) );
+                llEmail(gStringRecipient, "Caixa de depositos!", "A caixa de depositos foi tocada por " + llDetectedName(pIntegerI));
+            
+            }
+            
+        }
+            
+    }    
+    
+}
+
+state paying
+{
+    
+    state_entry()
+    {
+            
+        pIntegerEfeitoAtivo = TRUE;
+        gProcEmitirParticulas();
+            
+        llPlaySound(gStringSomGalinha, 1.0);
+            
+        llSetTimerEvent(10.0);
+ 
+        llOwnerSay("Paying");       
+        
+        llSetTimerEvent(10.0);
+        
+        gIntegerMoneyValue = 1000;
+     
+        if( gIntegerPermsOK )   
+            gKeyTransactionID = llTransferLindenDollars(gKeyTransferTo, gIntegerMoneyValue);
+        
+        
+    }
+
+    timer()
+    {
+        
+        gProcStopParticulas();
+        
+        llStopSound();
+        
+        pIntegerEfeitoAtivo = FALSE;
+        
+        llSetTimerEvent(0.0);
+        
+    }    
+
+    transaction_result(key eKeyID, integer eIntegerSuccess, string eStringData)
+    {
+        if (eKeyID != gKeyTransactionID)
+            return;
+        
+        if (eIntegerSuccess)
+        {
+            
+            llOwnerSay( "Transferência de L$  " + (string)gIntegerMoneyValue + " para o avatar " + llKey2Name(gKeyTransferTo) + " foi Concluida com sucesso!");
+            llSleep(1.0);
+            
+        }
+        else
+        {
+            
+            llOwnerSay( "Transferência Falhou!");
+            gIntegerMoneyValue = llFloor(gIntegerMoneyValue / 2);
+            
+        }
+        
+        if( gIntegerMoneyValue > 0)
+        {
+                
+            gKeyTransactionID = llTransferLindenDollars(gKeyTransferTo, gIntegerMoneyValue);
+                
+        }
+        else
+        {
+               
+            llSleep(10.0); 
+            state waiting_touch;
+                
+        }                    
+        
+    }    
+    
+}
