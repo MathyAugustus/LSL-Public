@@ -1,0 +1,251 @@
+// STUDIO59 ART's Tip Jar - Módulo de Tradução
+// Versão: 5.7 (Restauração Completa e Fallback Bidirecional)
+// Por: Augustus Mathy
+
+integer gIntDebug = FALSE;
+
+// Constantes de Link Message
+integer LINK_IM = 100;
+integer LINK_MENU_REQ = 101;
+integer LINK_MENU_RET = 102;
+integer LINK_FLOAT_REQ = 103;
+integer LINK_FLOAT_RET = 104;
+integer LINK_LOAD_DONE = 105;
+integer LINK_IDENTIFY_CMD = 106;
+integer LINK_CMD_RESULT = 107;
+integer LINK_RESET = 108;
+
+// Configurações
+string gStrNotecardName = "translations";
+integer gIntMaxTranslations = 300;
+
+// Variáveis Globais
+list gListTranslations; // [ID, LANG, TEXT]
+integer gIntLoadingComplete = FALSE;
+key gKeyNotecardQuery;
+integer gIntNotecardLine;
+
+// Lista de botões para identificação
+list gListCommandIDs = [
+    "MENU_TEST_PARTICLES",
+    "MENU_STOP_PARTICLES",
+    "MENU_CHANGE_TEXTURE",
+    "MENU_SCANNER_STATUS",
+    "MENU_HELP",
+    "MENU_CANCEL"
+];
+
+// Funções Internas
+
+string fixNewlines(string pStrText)
+{
+    list pListParts = llParseStringKeepNulls(pStrText, ["\\n"], []);
+    return llDumpList2String(pListParts, "\n");
+}
+
+loadTranslations()
+{
+    if (gIntDebug) llOwnerSay("Carregando notecard: " + gStrNotecardName);
+
+    gListTranslations = [];
+    gIntLoadingComplete = FALSE;
+    gIntNotecardLine = 0;
+
+    if (llGetInventoryType(gStrNotecardName) == INVENTORY_NOTECARD)
+    {
+        gKeyNotecardQuery = llGetNotecardLine(gStrNotecardName, gIntNotecardLine);
+    }
+    else
+    {
+        if (gIntDebug) llOwnerSay("Notecard '" + gStrNotecardName + "' não encontrado!");
+        gIntLoadingComplete = TRUE;
+        llMessageLinked(LINK_THIS, LINK_LOAD_DONE, "ERROR", NULL_KEY);
+    }
+}
+
+string getTranslationByLang(string pStrMessageID, string pStrLang)
+{
+    integer pIntLen = llGetListLength(gListTranslations);
+    if (pIntLen == 0) return pStrMessageID;
+
+    pStrLang = llToLower(pStrLang);
+    string pStrShortLang = llGetSubString(pStrLang, 0, 1); // Ex: "pt"
+
+    integer pIntIdx;
+    string pStrFoundEn = "";
+    string pStrFoundShort = "";
+
+    for (pIntIdx = 0; pIntIdx < pIntLen; pIntIdx = pIntIdx + 3)
+    {
+        string pStrId = llList2String(gListTranslations, pIntIdx);
+        if (pStrId == pStrMessageID)
+        {
+            string pStrLangEntry = llToLower(llList2String(gListTranslations, pIntIdx + 1));
+            string pStrText = llList2String(gListTranslations, pIntIdx + 2);
+
+            if (pStrLangEntry == pStrLang)
+            {
+                return pStrText; // Match exato (ex: pt-br == pt-br)
+            }
+            else if (pStrLangEntry == pStrShortLang)
+            {
+                pStrFoundShort = pStrText; // Match de prefixo (Notecard: pt, Viewer: pt-br)
+            }
+            else if (llGetSubString(pStrLangEntry, 0, 1) == pStrShortLang && pStrFoundShort == "")
+            {
+                pStrFoundShort = pStrText; // Match reverso (Notecard: pt-br, Viewer: pt)
+            }
+            else if (pStrLangEntry == "en" && pStrFoundEn == "")
+            {
+                pStrFoundEn = pStrText;
+            }
+        }
+    }
+
+    if (pStrFoundShort != "") return pStrFoundShort;
+    if (pStrFoundEn != "") return pStrFoundEn;
+    return pStrMessageID;
+}
+
+string getTranslation(string pStrMessageID, key pKeyAvatar)
+{
+    string pStrLang = "en";
+    if (pKeyAvatar != NULL_KEY)
+    {
+        pStrLang = llGetAgentLanguage(pKeyAvatar);
+    }
+    return getTranslationByLang(pStrMessageID, pStrLang);
+}
+
+default
+{
+    state_entry()
+    {
+        loadTranslations();
+    }
+
+    on_rez(integer eIntParam)
+    {
+        llResetScript();
+    }
+
+    changed(integer eIntChange)
+    {
+        if (eIntChange & CHANGED_INVENTORY)
+        {
+            loadTranslations();
+        }
+    }
+
+    dataserver(key eKeyQueryId, string eStrData)
+    {
+        if (eKeyQueryId == gKeyNotecardQuery)
+        {
+            if (eStrData == EOF)
+            {
+                gIntLoadingComplete = TRUE;
+                if (gIntDebug) llOwnerSay("Traduções carregadas. Total: " + (string)(llGetListLength(gListTranslations) / 3));
+                llMessageLinked(LINK_THIS, LINK_LOAD_DONE, "SUCCESS", NULL_KEY);
+            }
+            else
+            {
+                string pStrTrimmedLine = llStringTrim(eStrData, STRING_TRIM);
+                if (llGetSubString(pStrTrimmedLine, 0, 0) != "#" && pStrTrimmedLine != "")
+                {
+                    list pListParts = llParseString2List(pStrTrimmedLine, ["|"], []);
+                    if (llGetListLength(pListParts) == 3)
+                    {
+                        if (llGetListLength(gListTranslations) < (gIntMaxTranslations * 3))
+                        {
+                            string pStrId = llStringTrim(llList2String(pListParts, 0), STRING_TRIM);
+                            string pStrLg = llToLower(llStringTrim(llList2String(pListParts, 1), STRING_TRIM));
+                            string pStrTx = llStringTrim(llList2String(pListParts, 2), STRING_TRIM);
+
+                            gListTranslations = gListTranslations + [pStrId, pStrLg, fixNewlines(pStrTx)];
+                        }
+                    }
+                }
+                gIntNotecardLine = gIntNotecardLine + 1;
+                gKeyNotecardQuery = llGetNotecardLine(gStrNotecardName, gIntNotecardLine);
+            }
+        }
+    }
+
+    link_message(integer eIntSender, integer eIntNum, string eStrMsg, key eKeyId)
+    {
+        if (eIntNum == LINK_RESET)
+        {
+            llResetScript();
+        }
+        else if (eIntNum == LINK_IM)
+        {
+            list pListParams = llParseStringKeepNulls(eStrMsg, ["|"], []);
+            string pStrMsgId = llList2String(pListParams, 0);
+            string pStrTranslated = getTranslation(pStrMsgId, eKeyId);
+
+            integer pIntIdx;
+            for (pIntIdx = 1; pIntIdx < llGetListLength(pListParams); pIntIdx = pIntIdx + 2)
+            {
+                string pStrPlaceholder = "%" + llList2String(pListParams, pIntIdx) + "%";
+                string pStrValue = llList2String(pListParams, pIntIdx + 1);
+                list pListSplit = llParseStringKeepNulls(pStrTranslated, [pStrPlaceholder], []);
+                if (llGetListLength(pListSplit) >= 2)
+                {
+                    pStrTranslated = llDumpList2String(pListSplit, pStrValue);
+                }
+            }
+            llInstantMessage(eKeyId, pStrTranslated);
+        }
+        else if (eIntNum == LINK_MENU_REQ)
+        {
+            list pListParams = llParseStringKeepNulls(eStrMsg, ["|"], []);
+            string pStrTitleId = llList2String(pListParams, 0);
+            string pStrTitle = getTranslation(pStrTitleId, eKeyId);
+
+            list pListButtons = [];
+            integer pIntIdx;
+            for (pIntIdx = 1; pIntIdx < llGetListLength(pListParams); pIntIdx = pIntIdx + 1)
+            {
+                pListButtons = pListButtons + [getTranslation(llList2String(pListParams, pIntIdx), eKeyId)];
+            }
+            llMessageLinked(LINK_THIS, LINK_MENU_RET, pStrTitle + "|" + llList2CSV(pListButtons), eKeyId);
+        }
+        else if (eIntNum == LINK_FLOAT_REQ)
+        {
+            list pListParams = llParseStringKeepNulls(eStrMsg, ["|"], []);
+            string pStrLang = llList2String(pListParams, 0);
+            string pStrMsgId = llList2String(pListParams, 1);
+            string pStrTranslated = getTranslationByLang(pStrMsgId, pStrLang);
+
+            llMessageLinked(LINK_THIS, LINK_FLOAT_RET, pStrTranslated, NULL_KEY);
+        }
+        else if (eIntNum == LINK_IDENTIFY_CMD)
+        {
+            string pStrButtonText = eStrMsg;
+            string pStrLang = llGetAgentLanguage(eKeyId);
+
+            integer pIntIdx;
+            for (pIntIdx = 0; pIntIdx < llGetListLength(gListCommandIDs); pIntIdx = pIntIdx + 1)
+            {
+                string pStrCmdId = llList2String(gListCommandIDs, pIntIdx);
+                if (getTranslationByLang(pStrCmdId, pStrLang) == pStrButtonText)
+                {
+                    llMessageLinked(LINK_THIS, LINK_CMD_RESULT, pStrCmdId, eKeyId);
+                    return;
+                }
+            }
+            if (pStrLang != "en")
+            {
+                for (pIntIdx = 0; pIntIdx < llGetListLength(gListCommandIDs); pIntIdx = pIntIdx + 1)
+                {
+                    string pStrCmdId = llList2String(gListCommandIDs, pIntIdx);
+                    if (getTranslationByLang(pStrCmdId, "en") == pStrButtonText)
+                    {
+                        llMessageLinked(LINK_THIS, LINK_CMD_RESULT, pStrCmdId, eKeyId);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
