@@ -1,0 +1,98 @@
+# FORMATO: ID_DA_MENSAGEM|codigo_idioma|Texto da tradução
+
+# --- FLOATING_WELCOME ---
+FLOATING_WELCOME|en|✨ STUDIO59 ART's Tip Jar ✨\nIf you enjoyed my art,\nplease help me keep it here!
+FLOATING_WELCOME|pt|✨ STUDIO59 ART's Tip Jar ✨\nSe você gostou da minha arte,\npor favor ajude a mantê-la aqui!
+FLOATING_WELCOME|es|✨ STUDIO59 ART's Tip Jar ✨\nSi te gusta mi arte,\n¡por favor ayúdame a mantenerlo aquí!
+FLOATING_WELCOME|fr|✨ STUDIO59 ART's Tip Jar ✨\nSi vous aimez mon art,\ns'il vous plaît aidez-moi à le garder ici !
+FLOATING_WELCOME|de|✨ STUDIO59 ART's Tip Jar ✨\nWenn dir meine Kunst gefällt,\nhilf mir bitte, sie hier zu behalten!
+FLOATING_WELCOME|it|✨ STUDIO59 ART's Tip Jar ✨\nSe ti piace la mia arte,\nper favore aiutami a tenerla qui!
+FLOATING_WELCOME|tr|✨ STUDIO59 ART's Tip Jar ✨\nSanatımdan keyif aldıysanız,\nlütfen burada tutmama yardım edin!
+FLOATING_WELCOME|ru|✨ STUDIO59 ART's Tip Jar ✨\nЕсли вам нравится мое искусство,\nпожалуйста, помогите мне сохранить его здесь!
+FLOATING_WELCOME|ja|✨ STUDIO59 ART's Tip Jar ✨\n私の作品を気に入っていただけたなら、\n活動の継続を支援してください！
+FLOATING_WELCOME|ko|✨ STUDIO59 ART's Tip Jar ✨\n제 작품이 마음에 드셨다면,\n계속 활동할 수 있도록 도와주세요!
+FLOATING_WELCOME|zh|✨ STUDIO59 ART's Tip Jar ✨\n如果您喜欢我的艺术，\n请帮助我继续留在这里！
+
+# --- WELCOME_TIP ---
+WELCOME_TIP|en|✨ Welcome to STUDIO59 ART's! Touch and contribute to support the art. ✨
+WELCOME_TIP|pt|✨ Bem-vindo ao STUDIO59 ART's! Toque e contribua para apoiar a arte. ✨
+WELCOME_TIP|es|✨ ¡Bienvenido a STUDIO59 ART's! Toca y contribuye para apoyar el arte. ✨
+WELCOME_TIP|fr|✨ Bienvenue chez STUDIO59 ART's ! Touchez et contribuez pour soutenir l'art. ✨
+WELCOME_TIP|de|✨ Willkommen bei STUDIO59 ART's! Berühren und beitragen, um die Kunst zu unterstützen. ✨
+WELCOME_TIP|it|✨ Benvenuti da STUDIO59 ART's! Tocca e contribuisci per sostenere l'arte. ✨
+WELCOME_TIP|tr|✨ STUDIO59 ART's'a Hoş Geldiniz! Sanatı desteklemek için dokunun ve katkıda bulunun. ✨
+WELCOME_TIP|ru|✨ Добро пожаловать в STUDIO59 ART's! Нажмите и внесите свой вклад в поддержку искусства. ✨
+WELCOME_TIP|ja|✨ STUDIO59 ART's へようこそ！タッチしてアートを支援してください。 ✨
+WELCOME_TIP|ko|✨ STUDIO59 ART's 에 오신 것을 환영합니다! 터치하여 작품 활동을 후원해 주세요. ✨
+WELCOME_TIP|zh|✨ 欢迎来到 STUDIO59 ART's！点击并捐赠以支持艺术。 ✨
+
+# --- THANK_YOU_TIP ---
+THANK_YOU_TIP|en|Thank you %NAME% for your contribution of L$%AMOUNT%! Studio59 Art thanks you!
+THANK_YOU_TIP|pt|Obrigado %NAME% por sua contribuição de L$%AMOUNT%! Studio59 Art agradece!
+THANK_YOU_TIP|es|¡Gracias %NAME% por tu contribución de L$%AMOUNT%! ¡Studio59 Art te lo agradece!
+THANK_YOU_TIP|fr|Merci %NAME% pour votre contribution de L$%AMOUNT% ! Studio59 Art vous remercie !
+THANK_YOU_TIP|de|Vielen Dank %NAME% für deinen Beitrag von L$%AMOUNT%! Studio59 Art dankt dir!
+THANK_YOU_TIP|it|Grazie %NAME% per il tuo contributo di L$%AMOUNT%! Studio59 Art ti ringrazia!
+THANK_YOU_TIP|tr|L$%AMOUNT% tutarındaki katkınız için teşekkürler %NAME%! Studio59 Art size teşekkür eder!
+THANK_YOU_TIP|ru|Спасибо, %NAME%, за вклад в размере L$%AMOUNT%! Studio59 Art благодарит вас!
+THANK_YOU_TIP|ja|%NAME% さん、L$%AMOUNT% のご寄付ありがとうございました！Studio59 Art より感謝を込めて。
+THANK_YOU_TIP|ko|%NAME% 님, L$%AMOUNT% 기부에 감사드립니다! Studio59 Art 가 감사 인사를 전합니다!
+THANK_YOU_TIP|zh|谢谢 %NAME% 捐赠的 L$%AMOUNT%！Studio59 Art 感谢您的支持！
+
+# --- MENU_TITLE ---
+MENU_TITLE|en|🎨 STUDIO59 ART's Tip Jar\n\nSelect an option:
+MENU_TITLE|pt|🎨 STUDIO59 ART's Tip Jar\n\nSelecione uma opção:
+
+# --- MENU_BUTTONS ---
+MENU_TEST_PARTICLES|en|Test Particles
+MENU_TEST_PARTICLES|pt|Testar Partículas
+
+MENU_STOP_PARTICLES|en|Stop Particles
+MENU_STOP_PARTICLES|pt|Parar Partículas
+
+MENU_CHANGE_TEXTURE|en|Change Texture
+MENU_CHANGE_TEXTURE|pt|Trocar Textura
+
+MENU_SCANNER_STATUS|en|Scanner Status
+MENU_SCANNER_STATUS|pt|Status do Scanner
+
+MENU_HELP|en|Help
+MENU_HELP|pt|Ajuda
+
+MENU_CANCEL|en|Cancel
+MENU_CANCEL|pt|Cancelar
+
+# --- FEEDBACK MSGS ---
+TEXT_CANCELLED|en|Operation cancelled.
+TEXT_CANCELLED|pt|Operação cancelada.
+
+PARTICLE_TEST_MSG|en|🎵 Testing musical note particles!
+PARTICLE_TEST_MSG|pt|🎵 Testando partículas de notas musicais!
+
+PARTICLE_STOP_MSG|en|⏹️ Particles stopped!
+PARTICLE_STOP_MSG|pt|⏹️ Partículas paradas!
+
+TEXTURE_CHANGE_NOTE|en|🎵 Texture: Musical Note
+TEXTURE_CHANGE_NOTE|pt|🎵 Textura: Nota Musical
+
+TEXTURE_CHANGE_STAR|en|⭐ Texture: Star
+TEXTURE_CHANGE_STAR|pt|⭐ Textura: Estrela
+
+TEXTURE_CHANGE_HEART|en|❤️ Texture: Heart
+TEXTURE_CHANGE_HEART|pt|❤️ Textura: Coração
+
+TEXTURE_CHANGE_GLOW|en|✨ Texture: Glow circular
+TEXTURE_CHANGE_GLOW|pt|✨ Textura: Glow circular
+
+TEXTURE_TESTING_MSG|en|Testing new texture...
+TEXTURE_TESTING_MSG|pt|Testando nova textura...
+
+MENU_ALREADY_OPEN|en|You already have a menu open. Please wait.
+MENU_ALREADY_OPEN|pt|Você já tem um menu aberto. Aguarde.
+
+MENU_TIMEOUT_MSG|en|Menu timed out. Listener closed.
+MENU_TIMEOUT_MSG|pt|O tempo do menu esgotou. O listener foi fechado.
+
+# --- HELP MESSAGE ---
+HELP_MESSAGE|en|══════════════════════════\n STUDIO59 ART's TIP JAR\n══════════════════════════\n\n💰 Touch to contribute\n🎁 Receives gift folder\n👑 Owner: Touch for menu\n🎨 4 texture options\n📡 Scanner: 20m range\n══════════════════════════
+HELP_MESSAGE|pt|══════════════════════════\n STUDIO59 ART's TIP JAR\n══════════════════════════\n\n💰 Toque e contribua\n🎁 Recebe pasta de presentes\n👑 Dono: Toque para menu\n🎨 4 opções de textura\n📡 Scanner: raio 20m\n══════════════════════════
